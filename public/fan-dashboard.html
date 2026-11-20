@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fan Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/CSS/style.css" />
+</head>
+<body>
+  <header>
+    <div class="logo"><a class="keep" href="/">KING<span>Z</span>EVI</a></div>
+    <nav class="nav-links">
+      <a href="/" class="keep">Home</a>
+      <a href="/fan-dashboard" class="keep active">Dashboard</a>
+    </nav>
+    <button class="mobile-toggle" aria-label="Toggle menu" onclick="toggleMobileNav()">☰</button>
+  </header>
+
+  <main class="fan-dashboard-page">
+    <section class="fan-dashboard-hero">
+      <div>
+        <p class="section-label">Fan account</p>
+        <h1 class="section-title">Your profile dashboard</h1>
+        <p class="section-subtitle">Update your profile photo, change your password, and keep your account details current.</p>
+      </div>
+      <a class="btn-ghost" href="/">Back to home</a>
+    </section>
+
+    <div class="fan-dashboard-grid">
+      <aside class="fan-sidebar-card">
+        <div class="fan-avatar-preview" id="fan-avatar-preview">🎧</div>
+        <h2 id="fan-card-name">Your profile</h2>
+        <p id="fan-card-role" class="fan-role-pill">Fan</p>
+        <div class="fan-sidebar-meta">
+          <div><strong>Email</strong><span id="fan-card-email">—</span></div>
+          <div><strong>Member since</strong><span id="fan-card-date">—</span></div>
+        </div>
+      </aside>
+
+      <section class="fan-card">
+        <div class="fan-card-header">
+          <div>
+            <p class="section-label">Settings</p>
+            <h3>Profile details</h3>
+          </div>
+        </div>
+
+        <form id="profile-form" class="fan-form" onsubmit="event.preventDefault(); saveProfile();">
+          <div class="form-group">
+            <label>Profile photo</label>
+            <input type="file" id="profile-avatar" accept="image/*" />
+            <p class="fan-helper">PNG, JPG, or GIF up to 4MB.</p>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Username</label>
+              <input type="text" id="profile-username" placeholder="Your display name" />
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" id="profile-email" placeholder="you@example.com" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Bio</label>
+            <textarea id="profile-bio" placeholder="Tell other fans a bit about yourself..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Phone Number</label>
+            <input type="text" id="profile-phone" placeholder="Your phone number" />  
+          </div>
+
+          <div class="fan-section-divider"></div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Current password</label>
+              <input type="password" id="profile-current-password" placeholder="Current password" />
+            </div>
+            <div class="form-group">
+              <label>New password</label>
+              <input type="password" id="profile-new-password" placeholder="New password" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Confirm new password</label>
+            <input type="password" id="profile-confirm-password" placeholder="Repeat new password" />
+          </div>
+
+          <div class="fan-form-actions">
+            <button class="btn-primary" type="submit">Save changes</button>
+            <button class="btn-ghost" type="button" onclick="resetProfileForm()">Reset</button>
+          </div>
+
+          <div id="profile-status" class="fan-status" aria-live="polite"></div>
+        </form>
+      </section>
+    </div>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="/config.js"></script>
+  <script src="/JS/fan-dashboard.js"></script>
+</body>
+</html>

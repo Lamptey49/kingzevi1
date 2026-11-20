@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="/CSS/style.css" />
+</head>
+<body>
+  <div class="admin-dashboard-shell">
+    <aside class="admin-sidebar">
+      <div class="admin-sidebar-brand">
+        <div class="brand-mark">KZ</div>
+        <div>
+          <p class="section-label">Artist Suite</p>
+          <h1>King Zevi</h1>
+        </div>
+      </div>
+
+      <nav class="admin-nav" aria-label="Dashboard sections">
+        <a class="admin-nav-link active" href="#overview">Overview</a>
+        <a class="admin-nav-link" href="#users-section">Users</a>
+        <a class="admin-nav-link" href="#singles-section">Singles</a>
+        <a class="admin-nav-link" href="#albums-section">Albums</a>
+      </nav>
+
+      <div class="admin-sidebar-card">
+        <p class="section-label">Signed in as</p>
+        <div class="admin-user-pill">
+          <span class="admin-user-avatar">A</span>
+          <div>
+            <strong id="admin-user-name">—</strong>
+            <div class="admin-user-role" id="admin-user-role"></div>
+          </div>
+        </div>
+        <div class="admin-sidebar-actions">
+          <button class="btn-primary" onclick="refreshDashboard()">Refresh</button>
+          <button class="btn-ghost" onclick="location.href='/admin/'">Upload</button>
+          <button class="btn-ghost" onclick="logout()">Sign out</button>
+        </div>
+      </div>
+    </aside>
+
+    <main class="admin-main">
+      <section id="overview" class="admin-panel admin-panel-hero">
+        <div class="admin-panel-top">
+          <div>
+            <p class="section-label">Admin Dashboard</p>
+            <h2 class="section-title">Management Center</h2>
+            <p class="section-subtitle">Review stats, manage accounts, and keep your catalog organized from one place.</p>
+          </div>
+          <button class="btn-ghost" onclick="refreshDashboard()">Refresh</button>
+        </div>
+
+        <div class="admin-stat-grid">
+          <div class="admin-metric-card">
+            <span class="admin-metric-label">Users</span>
+            <strong id="total-users">0</strong>
+          </div>
+          <div class="admin-metric-card">
+            <span class="admin-metric-label">Singles</span>
+            <strong id="total-singles">0</strong>
+          </div>
+          <div class="admin-metric-card">
+            <span class="admin-metric-label">Albums</span>
+            <strong id="total-albums">0</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="admin-grid">
+        <article id="users-section" class="admin-panel">
+          <div class="admin-panel-header">
+            <div>
+              <p class="section-label">People</p>
+              <h3>Users</h3>
+            </div>
+          </div>
+          <div id="users-list" class="dashboard-list"></div>
+        </article>
+
+        <article id="singles-section" class="admin-panel">
+          <div class="admin-panel-header">
+            <div>
+              <p class="section-label">Catalog</p>
+              <h3>Singles</h3>
+            </div>
+          </div>
+          <div id="singles-list" class="dashboard-list"></div>
+        </article>
+      </section>
+
+      <section id="albums-section" class="admin-panel admin-panel-wide">
+        <div class="admin-panel-header">
+          <div>
+            <p class="section-label">Catalog</p>
+            <h3>Albums</h3>
+          </div>
+        </div>
+        <div id="albums-list" class="dashboard-list"></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="/config.js"></script>
+  <script>
+    let token = localStorage.getItem('st');
+    const API_BASE_URL = String((window.__APP_CONFIG__ && window.__APP_CONFIG__.apiBaseUrl) || window.API_BASE_URL || '').replace(/\/$/, '');
+
+    function apiUrl(path) {
+      const normalizedPath = path.replace(/^\//, '');
+      return API_BASE_URL ? `${API_BASE_URL}/${normalizedPath}` : `/${normalizedPath}`;
+    }
+
+    async function api(path, options = {}) {
+      const headers = options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const res = await fetch(apiUrl(path), {
+        headers,
+        ...options
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Request failed');
+      return data;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[ch]));
+    }
+
+    async function loadAuth() {
+      try {
+        const data = await api('/api/auth/me');
+        const user = data.user;
+        if (!user) {
+          window.location.href = '/admin/';
+          return;
+        }
+        document.getElementById('admin-user-name').textContent = user.username;
+        document.getElementById('admin-user-role').textContent = user.role;
+      } catch (error) {
+        window.location.href = '/admin/';
+      }
+    }
+
+    function renderList(containerId, items, renderItem, emptyText) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      if (!items || !items.length) {
+        container.innerHTML = `<div class="dashboard-empty">${emptyText}</div>`;
+        return;
+      }
+      container.innerHTML = items.map(renderItem).join('');
+    }
+
+    async function refreshDashboard() {
+      try {
+        const data = await api('/api/admin/dashboard');
+        document.getElementById('total-users').textContent = data.stats.totalUsers;
+        document.getElementById('total-singles').textContent = data.stats.totalSingles;
+        document.getElementById('total-albums').textContent = data.stats.totalAlbums;
+
+        renderList('users-list', data.users || [], user => `
+          <div class="dashboard-item">
+            <div>
+              <strong>${escapeHtml(user.name)}</strong>
+              <div class="dashboard-meta">${escapeHtml(user.email)} · ${escapeHtml(user.role)}</div>
+            </div>
+          </div>
+        `, 'No users yet.');
+
+        renderList('singles-list', data.music?.singles || [], single => `
+          <div class="dashboard-item">
+            <div>
+              <strong>${escapeHtml(single.title)}</strong>
+              <div class="dashboard-meta">${escapeHtml(single.genre)} · ${escapeHtml(single.year)} · ${single.audioPath ? 'Downloadable' : 'No download'}</div>
+            </div>
+            <div class="dashboard-actions">
+              <button class="btn-ghost" type="button" onclick="editItem('single', '${single.id}')">Edit</button>
+              <button class="btn-ghost" type="button" onclick="deleteItem('single', '${single.id}')">Delete</button>
+            </div>
+          </div>
+        `, 'No singles added yet.');
+
+        renderList('albums-list', data.music?.albums || [], album => `
+          <div class="dashboard-item">
+            <div>
+              <strong>${escapeHtml(album.title)}</strong>
+              <div class="dashboard-meta">${escapeHtml(album.genre)} · ${escapeHtml(album.year)} · ${album.tracks?.length || 0} tracks</div>
+            </div>
+            <div class="dashboard-actions">
+              <button class="btn-ghost" type="button" onclick="editItem('album', '${album.id}')">Edit</button>
+              <button class="btn-ghost" type="button" onclick="deleteItem('album', '${album.id}')">Delete</button>
+            </div>
+          </div>
+        `, 'No albums added yet.');
+      } catch (error) {
+        toast(error.message);
+      }
+    }
+
+    async function logout() {
+      try {
+        await api('/api/auth/logout', { method: 'POST' });
+        token = null;
+        localStorage.removeItem('st');
+        window.location.href = '/admin/';
+      } catch (error) {
+        toast(error.message);
+      }
+    }
+
+    async function deleteItem(type, id) {
+      if (!confirm('Delete this ' + (type === 'single' ? 'single' : 'album') + '?')) return;
+      const path = `/api/music/${id}`;
+      try {
+        await api(path, { method: 'DELETE' });
+        toast('Deleted successfully');
+        await refreshDashboard();
+      } catch (error) {
+        toast(error.message);
+      }
+    }
+
+    function editItem(type, id) {
+      toast('Edit is available on the upload page for now.');
+    }
+
+    function toast(message) {
+      const el = document.getElementById('toast');
+      el.textContent = message;
+      el.classList.add('show');
+      clearTimeout(el._timeout);
+      el._timeout = setTimeout(() => el.classList.remove('show'), 3000);
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadAuth();
+      await refreshDashboard();
+    });
+  </script>
+</body>
+</html>

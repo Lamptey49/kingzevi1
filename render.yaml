@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: solace-backend
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MONGODB_URI
+        sync: false          # paste your Atlas URI in the Render dashboard
+      - key: DB_NAME
+        value: solace
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false          # from cloudinary.com → Dashboard
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: ALLOWED_ORIGIN
+        sync: false          # your Netlify URL

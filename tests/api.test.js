@@ -1,0 +1,105 @@
+﻿import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import express from 'express';
+import mongoose from 'mongoose';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import { v2 as cloudinary } from 'cloudinary';
+import { Writable } from 'node:stream';
+import social from '../routes/social.js';
+import auth from '../routes/auth.js';
+import music from '../routes/music.js';
+import profile from '../routes/profile.js';
+import { User, Post, Music, Track, Stream, Follow } from '../db/models.js';
+import { signToken } from '../middleware/auth.js';
+
+test('MongoDB feed pagination, profile pictures and indexed music counts', async t => {
+  const db = await MongoMemoryServer.create({ instance: { launchTimeout: 60000 } });
+  t.after(async () => { await mongoose.disconnect(); await db.stop(); });
+  await mongoose.connect(db.getUri());
+  const app = express();
+  app.use(express.json());
+  app.use('/api/profile', profile); app.use('/api/social', social); app.use('/api/auth', auth); app.use('/api/music', music);
+  const server = await new Promise(resolve => { const s = app.listen(0, '127.0.0.1', () => resolve(s)); });
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const base = `http://127.0.0.1:${server.address().port}/api`;
+  const get = async path => { const r = await fetch(base + path); return { status: r.status, ...await r.json() }; };
+  const user = await User.create({ username: 'fan', email: 'fan@test.local', password_hash: 'unused', avatar_url: 'https://res.cloudinary.com/demo/image/upload/old.jpg', avatar_public_id: 'old' });
+  const date = new Date('2026-01-01');
+  await Post.insertMany(Array.from({ length: 5 }, (_, i) => ({ user_id: user.id, content: `Post ${i}`, created_at: date })));
+  const first = await get('/social/posts?limit=2');
+  assert.equal(first.status, 200); assert.equal(first.posts.length, 2); assert.equal(first.has_more, true);
+  assert.equal(first.posts[0].avatar_url, user.avatar_url);
+  // A new post must not shift the boundary between already loaded and older posts.
+  await Post.create({ user_id: user.id, content: 'New arrival' });
+  const second = await get('/social/posts?limit=2&page=2&cursor=' + first.next_cursor);
+  const last = await get('/social/posts?limit=2&page=3&cursor=' + second.next_cursor);
+  assert.equal(last.posts.length, 1); assert.equal(last.has_more, false); assert.equal(last.next_cursor, null);
+  assert.equal(new Set([...first.posts, ...second.posts, ...last.posts].map(p => p.id)).size, 5);
+  assert.equal((await get('/social/posts?cursor=broken')).status, 400);
+  assert.equal((await get('/social/posts?limit=-5')).posts.length, 1);
+  assert.equal((await get('/social/posts?page=99')).has_more, false);
+
+  const upload = cloudinary.uploader.upload_stream, destroy = cloudinary.uploader.destroy;
+  t.after(() => { cloudinary.uploader.upload_stream = upload; cloudinary.uploader.destroy = destroy; });
+  let removed = false;
+  cloudinary.uploader.upload_stream = (options, callback) => new Writable({ write(chunk, encoding, done) { done(); }, final(done) { callback(new Error('Upload failed')); done(); } });
+  cloudinary.uploader.destroy = async () => { removed = true; };
+  const token = signToken({ id: user.id, role: 'fan' });
+  const sendAvatar = async () => {
+    const body = new FormData(); body.append('avatar', new Blob(['image'], { type: 'image/png' }), 'avatar.png');
+    return fetch(base + '/auth/avatar', { method: 'POST', headers: { Authorization: 'Bearer ' + token }, body });
+  };
+  assert.equal((await sendAvatar()).status, 500);
+  assert.equal(removed, false); assert.equal((await User.findById(user.id)).avatar_url, user.avatar_url);
+  cloudinary.uploader.upload_stream = (options, callback) => new Writable({ write(chunk, encoding, done) { done(); }, final(done) { callback(null, { secure_url: 'https://res.cloudinary.com/demo/image/upload/new.jpg', public_id: 'new' }); done(); } });
+  assert.equal((await sendAvatar()).status, 200); assert.equal(removed, true);
+  assert.equal((await get('/social/posts?limit=1')).posts[0].avatar_url, 'https://res.cloudinary.com/demo/image/upload/new.jpg');
+
+  const release = await Music.create({ artist_id: user.id, title: 'Release', type: 'single' });
+  const track = await Track.create({ music_id: release.id, track_number: 1, title: 'Song' });
+  await Stream.insertMany([{ track_id: track.id }, { track_id: track.id }]);
+  const releases = await get('/music?type=single');
+  assert.equal(releases.status, 200); assert.equal(releases.music[0].stream_count, 2);
+
+  await Promise.all([Follow.init(), Post.init()]);
+  const other = await User.create({ username: 'listener', email: 'listener@test.local', password_hash: 'unused' });
+  const otherToken = signToken({ id: other.id, role: 'fan' });
+  const request = async (method, path, authToken = otherToken) => {
+    const r = await fetch(base + path, { method, headers: authToken ? { Authorization: 'Bearer ' + authToken } : {} });
+    return { status: r.status, ...await r.json() };
+  };
+  assert.equal((await request('PUT', '/social/users/' + user.id + '/follow', null)).status, 401);
+  assert.equal((await request('PUT', '/social/users/' + other.id + '/follow')).status, 400);
+  await Promise.all([request('PUT', '/social/users/' + user.id + '/follow'), request('PUT', '/social/users/' + user.id + '/follow')]);
+  assert.equal(await Follow.countDocuments({ follower_id: other.id }), 1);
+  const publicProfile = await request('GET', '/profile/fan');
+  assert.equal(publicProfile.following, true); assert.equal(publicProfile.stats.followers, 1);
+  assert.deepEqual(publicProfile.followers.map(person => person.username), ['listener']);
+  await request('PUT', '/social/users/' + other.id + '/follow', token);
+  const updatedProfile = await request('GET', '/profile/fan');
+  assert.deepEqual(updatedProfile.following_users.map(person => person.username), ['listener']);
+  assert.equal((await request('GET', '/social/posts?feed=following')).posts.length, 6);
+  assert.equal((await request('GET', '/social/posts?feed=following', null)).status, 401);
+  await request('DELETE', '/social/users/' + user.id + '/follow');
+  assert.equal((await request('GET', '/social/posts?feed=following')).posts.length, 0);
+
+  const originalId = first.posts[0].id;
+  await Post.updateOne({ _id: originalId }, { image_url: 'https://res.cloudinary.com/demo/image/upload/post.jpg' });
+  assert.equal((await request('PUT', '/social/posts/' + originalId + '/share', token)).status, 400);
+  assert.equal((await request('PUT', '/social/posts/' + originalId + '/share', null)).status, 401);
+  await Promise.all([request('PUT', '/social/posts/' + originalId + '/share'), request('PUT', '/social/posts/' + originalId + '/share')]);
+  assert.equal(await Post.countDocuments({ original_post_id: originalId }), 1);
+  let feed = await request('GET', '/social/posts');
+  const repost = feed.posts.find(p => p.post_type === 'repost');
+  assert.equal(repost.image_url, 'https://res.cloudinary.com/demo/image/upload/post.jpg');
+  assert.equal(repost.original_author, 'fan'); assert.equal(repost.content, first.posts[0].content);
+  assert.equal(repost.shared_by_me, true); assert.equal(repost.share_count, 1);
+  assert.equal((await request('GET', '/profile/listener')).posts[0].original_author, 'fan');
+  await request('DELETE', '/social/posts/' + repost.id + '/share');
+  assert.equal(await Post.countDocuments({ original_post_id: originalId }), 0);
+  assert.ok(await Post.exists({ _id: originalId }));
+  await request('PUT', '/social/posts/' + originalId + '/share');
+  await request('DELETE', '/social/posts/' + originalId, token);
+  feed = await request('GET', '/social/posts');
+  assert.equal(feed.posts.find(p => p.post_type === 'repost').original_unavailable, true);
+});

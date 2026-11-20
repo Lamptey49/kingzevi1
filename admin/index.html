@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Page</title>
+    <link rel="stylesheet" href="/CSS/style.css" />
+</head>
+<body>
+    <!-- UPLOAD -->
+<section id="upload-section" class="admin-page" style="padding-top:0">
+  <div class="admin-header">
+    <div>
+      <p class="section-label">Artist Portal</p>
+      <h2 class="section-title">Upload Music</h2>
+      <p class="section-subtitle">Sign in with your artist or admin account to publish new music and manage uploads.</p>
+    </div>
+  </div>
+  <div class="upload-section">
+    <div class="auth-panel" id="auth-panel">
+      <div id="auth-signed-out">
+        <div class="auth-form">
+          <div class="form-group">
+            <label>Name</label>
+            <input type="text" id="auth-name" placeholder="Artist name" />
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="auth-email" placeholder="you@example.com" />
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="auth-password" placeholder="At least 8 characters" />
+          </div>
+          <div class="form-group">
+            <label>Role</label>
+            <select id="auth-role" class="auth-role">
+              <option value="artist">Artist</option>
+              <option value="fan">Fan</option>
+            </select>
+          </div>
+          <div class="auth-actions">
+            <button class="btn-submit" onclick="register()">Register</button>
+            <button class="btn-ghost" onclick="login()">Login</button>
+          </div>
+        </div>
+        <p class="auth-note">First registered account becomes admin. Publishing requires an artist or admin account.</p>
+      </div>
+      <div id="auth-signed-in" style="display:none">
+        <div class="auth-status">Signed in as <strong id="auth-user-name"></strong> <span id="auth-user-role"></span></div>
+        <button class="btn-ghost" onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <div class="admin-actions" style="display:none; margin-top:16px;" id="admin-actions-bar">
+      <button class="btn-ghost" type="button" onclick="location.href='/admin/dashboard'">Open Dashboard</button>
+    </div>
+
+    <div id="artist-tools" class="" style="display:none">
+    <div class="upload-tabs">
+      <button class="tab-btn active" id="tab-single" onclick="switchTab('single')">Single</button>
+      <button class="tab-btn" id="tab-album" onclick="switchTab('album')">Album</button>
+    </div>
+
+    <!-- SINGLE FORM -->
+    <div id="form-single">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Track Title *</label>
+          <input type="text" id="s-title" placeholder="e.g. Golden Hour" />
+        </div>
+        <div class="form-group">
+          <label>Genre</label>
+          <select id="s-genre">
+            <option value="">Select genre</option>
+            <option>Afrobeats</option><option>R&B / Soul</option><option>Hip-Hop</option>
+            <option>Pop</option><option>Highlife</option><option>Jazz</option>
+            <option>Electronic</option><option>Reggae</option><option>Gospel</option><option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Release Year</label>
+          <input type="number" id="s-year" placeholder="2026" min="2000" max="2030" />
+        </div>
+        <div class="form-group">
+          <label>Cover Art Emoji (or upload)</label>
+          <input type="text" id="s-emoji" placeholder="🎵" maxlength="4" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="s-desc" placeholder="Tell fans what this track is about…"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Audio File *</label>
+        <div class="drop-zone" id="s-drop" onclick="document.getElementById('s-file').click()">
+          <div class="drop-icon">🎵</div>
+          <p class="drop-label" id="s-drop-label">Drop audio file here</p>
+          <p class="drop-sub">MP3, WAV, FLAC · Up to 100MB</p>
+          <input type="file" id="s-file" accept="audio/*" style="display:none" onchange="handleSingleFile(this)" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--white)">
+          <input type="checkbox" id="s-download" checked style="accent-color:var(--gold)"/>
+          Allow fans to download this track
+        </label>
+      </div>
+      <div class="submit-row">
+        <button class="btn-submit" onclick="publishSingle()">Publish Single →</button>
+      </div>
+    </div>
+
+    <!-- ALBUM FORM -->
+    <div id="form-album" style="display:none">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Album Title *</label>
+          <input type="text" id="a-title" placeholder="e.g. Midnight Reverie" />
+        </div>
+        <div class="form-group">
+          <label>Genre</label>
+          <select id="a-genre">
+            <option value="">Select genre</option>
+            <option>Afrobeats</option><option>R&B / Soul</option><option>Hip-Hop</option>
+            <option>Pop</option><option>Highlife</option><option>Jazz</option>
+            <option>Electronic</option><option>Reggae</option><option>Gospel</option><option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Release Year</label>
+          <input type="number" id="a-year" placeholder="2026" min="2000" max="2030" />
+        </div>
+        <div class="form-group">
+          <label>Cover Art Emoji</label>
+          <input type="text" id="a-emoji" placeholder="💿" maxlength="4" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Album Description</label>
+        <textarea id="a-desc" placeholder="What's the story behind this album?"></textarea>
+      </div>
+      <div class="album-tracks-editor">
+        <label style="color:var(--muted);font-size:.8rem;font-weight:500;letter-spacing:.04em">TRACKS</label>
+        <div id="track-rows" style="margin-top:10px"></div>
+        <button class="add-track-btn" onclick="addTrackRow()">+ Add Track</button>
+      </div>
+      <div class="form-group" style="margin-top:20px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--white)">
+          <input type="checkbox" id="a-download" checked style="accent-color:var(--gold)"/>
+          Allow fans to download tracks
+        </label>
+      </div>
+      <div class="submit-row">
+        <button class="btn-submit" onclick="publishAlbum()">Publish Album →</button>
+      </div>
+    </div>
+    </div>
+    <div id="admin-dashboard" class="admin-dashboard" style="display:none">
+      <div class="dashboard-header">
+        <div>
+          <p class="section-label">Admin Dashboard</p>
+          <h3 class="section-title">Manage Music</h3>
+        </div>
+        <button class="btn-ghost" type="button" onclick="refreshAdmin()">Refresh</button>
+      </div>
+
+      <div class="dashboard-grid">
+        <div class="dashboard-panel">
+          <h4>Singles</h4>
+          <div id="admin-singles" class="dashboard-list"></div>
+        </div>
+        <div class="dashboard-panel">
+          <h4>Albums</h4>
+          <div id="admin-albums" class="dashboard-list"></div>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <div class="dashboard-panel">
+          <h4>Users</h4>
+          <div id="admin-users" class="dashboard-list"></div>
+        </div>
+        <div class="dashboard-panel">
+          <h4>Stats</h4>
+          <div class="dashboard-meta">Total users: <strong id="admin-total-users">0</strong></div>
+          <div class="dashboard-meta">Total singles: <strong id="admin-total-singles">0</strong></div>
+          <div class="dashboard-meta">Total albums: <strong id="admin-total-albums">0</strong></div>
+        </div>
+      </div>
+
+      <div id="admin-editor" class="admin-editor" style="display:none; margin-top:32px;">
+        <h4 id="editor-title">Edit Item</h4>
+        <form id="editor-form" onsubmit="event.preventDefault(); saveAdminItem();">
+          <input type="hidden" id="editor-type" />
+          <input type="hidden" id="editor-id" />
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Title</label>
+              <input type="text" id="editor-title-input" />
+            </div>
+            <div class="form-group">
+              <label>Genre</label>
+              <input type="text" id="editor-genre-input" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Year</label>
+              <input type="number" id="editor-year-input" min="2000" max="2030" />
+            </div>
+            <div class="form-group">
+              <label>Emoji</label>
+              <input type="text" id="editor-emoji-input" maxlength="4" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Description</label>
+            <textarea id="editor-desc-input"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--white)">
+              <input type="checkbox" id="editor-download-input" style="accent-color:var(--gold)" />
+              Allow download
+            </label>
+          </div>
+
+          <div class="dashboard-editor-actions">
+            <button class="btn-submit" type="submit">Save</button>
+            <button class="btn-ghost" type="button" onclick="closeAdminEditor()">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+<script src="/config.js"></script>
+<script>
+  let currentUser = null;
+  let trackCount = 0;
+  let adminSingles = [];
+  let adminAlbums = [];
+  let adminUsers = [];
+  let adminStats = { totalUsers: 0, totalSingles: 0, totalAlbums: 0 };
+  let token = localStorage.getItem('st');
+  const API_BASE_URL = String((window.__APP_CONFIG__ && window.__APP_CONFIG__.apiBaseUrl) || window.API_BASE_URL || '').replace(/\/$/, '');
+
+  function apiUrl(path) {
+    const base = String((window.__APP_CONFIG__ && window.__APP_CONFIG__.apiBaseUrl) || window.API_BASE_URL || '').trim().replace(/\/$/, '');
+    const cleanPath = String(path || '').trim();
+
+    if (!cleanPath) return base ? `${base}/api` : '/api';
+    if (/^https?:\/\//i.test(cleanPath)) return cleanPath;
+
+    const withoutLeadingSlash = cleanPath.replace(/^\/+/, '');
+    const withoutApiPrefix = withoutLeadingSlash.replace(/^api\//i, '');
+    const apiPath = `api/${withoutApiPrefix}`;
+
+    if (!base) return `/${apiPath}`;
+    const normalizedBase = base.replace(/\/api\/?$/, '');
+    return `${normalizedBase}/${apiPath}`;
+  }
+
+  async function api(path, options = {}) {
+    const headers = options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await fetch(apiUrl(path), {
+      headers,
+      ...options
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Request failed');
+    return data;
+  }
+
+  async function loadAuth() {
+    try {
+      const data = await api('/api/auth/me');
+      currentUser = data.user;
+    } catch (error) {
+      currentUser = null;
+    }
+    updateAuthUi();
+  }
+
+  function updateAuthUi() {
+    const signedOut = document.getElementById('auth-signed-out');
+    const signedIn = document.getElementById('auth-signed-in');
+    const artistTools = document.getElementById('artist-tools');
+    const adminActionsBar = document.getElementById('admin-actions-bar');
+    const canPublish = currentUser && ['artist', 'admin'].includes(currentUser.role);
+
+    signedOut.style.display = currentUser ? 'none' : 'block';
+    signedIn.style.display = currentUser ? 'flex' : 'none';
+    artistTools.style.display = canPublish ? 'block' : 'none';
+    adminActionsBar.style.display = canPublish ? 'flex' : 'none';
+    const dashboard = document.getElementById('admin-dashboard');
+    if (dashboard) dashboard.style.display = canPublish ? 'block' : 'none';
+
+    if (currentUser) {
+      document.getElementById('auth-user-name').textContent = currentUser.username;
+      document.getElementById('auth-user-role').textContent = `(${currentUser.role})`;
+    }
+  }
+
+  async function register() {
+    try {
+      const data = await api('/api/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          username: document.getElementById('auth-name').value,
+          email: document.getElementById('auth-email').value,
+          password: document.getElementById('auth-password').value,
+          role: document.getElementById('auth-role').value
+        })
+      });
+      currentUser = data.user;
+      token = data.token;
+      localStorage.setItem('st', token);
+      updateAuthUi();
+      alert(`Registered as ${currentUser.role}`);
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  async function login() {
+    try {
+      const data = await api('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: document.getElementById('auth-email').value,
+          password: document.getElementById('auth-password').value
+        })
+      });
+      currentUser = data.user;
+      token = data.token;
+      localStorage.setItem('st', token);
+      updateAuthUi();
+      alert('Signed in');
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  async function logout() {
+    try {
+      await api('/api/auth/logout', { method: 'POST' });
+      currentUser = null;
+      token = null;
+      localStorage.removeItem('st');
+      updateAuthUi();
+      alert('Signed out');
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  function switchTab(tab) {
+    document.getElementById('form-single').style.display = tab === 'single' ? 'block' : 'none';
+    document.getElementById('form-album').style.display = tab === 'album' ? 'block' : 'none';
+    document.getElementById('tab-single').classList.toggle('active', tab === 'single');
+    document.getElementById('tab-album').classList.toggle('active', tab === 'album');
+    if (tab === 'album' && !document.getElementById('track-rows').children.length) {
+      addTrackRow();
+      addTrackRow();
+      addTrackRow();
+    }
+  }
+
+  function addTrackRow() {
+    trackCount += 1;
+    const rowId = `tr-${trackCount}`;
+    const div = document.createElement('div');
+    div.className = 'track-editor-row';
+    div.id = rowId;
+    div.innerHTML = `
+      <span class="track-editor-num">${trackCount}</span>
+      <input type="text" class="track-editor-name" placeholder="Track ${trackCount} title…" />
+      <button class="track-file-btn" type="button" onclick="document.getElementById('track-file-${trackCount}').click()">+ File</button>
+      <input type="file" id="track-file-${trackCount}" accept="audio/*" style="display:none" onchange="handleTrackFile(this, '${rowId}')" />
+      <button class="track-del" type="button" onclick="removeTrack('${rowId}')" title="Remove">✕</button>
+    `;
+    document.getElementById('track-rows').appendChild(div);
+  }
+
+  function removeTrack(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.remove();
+  }
+
+  function handleSingleFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+    document.getElementById('s-drop-label').textContent = `✓ ${file.name}`;
+  }
+
+  function handleTrackFile(input, rowId) {
+    const file = input.files[0];
+    if (!file) return;
+    const row = document.getElementById(rowId);
+    if (!row) return;
+    const button = row.querySelector('.track-file-btn');
+    if (button) button.textContent = `✓ ${file.name}`;
+  }
+
+  async function publishSingle() {
+    const title = document.getElementById('s-title').value.trim();
+    if (!title) { alert('Please enter a track title'); return; }
+
+    const form = new FormData();
+    form.append('title', title);
+    form.append('type', 'single');
+    form.append('genre', document.getElementById('s-genre').value || 'Other');
+    form.append('year', document.getElementById('s-year').value || '2026');
+    form.append('emoji', document.getElementById('s-emoji').value || '🎵');
+    form.append('description', document.getElementById('s-desc').value);
+    form.append('allow_download', document.getElementById('s-download').checked ? 'true' : 'false');
+
+    const audio = document.getElementById('s-file').files[0];
+    if (audio) form.append('audio', audio);
+
+    try {
+      await api('/api/music', { method: 'POST', body: form });
+      alert(`Single "${title}" uploaded successfully.`);
+      document.getElementById('s-title').value = '';
+      document.getElementById('s-emoji').value = '';
+      document.getElementById('s-desc').value = '';
+      document.getElementById('s-file').value = '';
+      document.getElementById('s-drop-label').textContent = 'Drop audio file here';
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  async function publishAlbum() {
+    const title = document.getElementById('a-title').value.trim();
+    if (!title) { alert('Please enter an album title'); return; }
+
+    const rows = Array.from(document.querySelectorAll('#track-rows .track-editor-row'));
+    const tracks = rows.map((row, index) => {
+      const name = row.querySelector('.track-editor-name').value.trim() || `Track ${index + 1}`;
+      const fileInput = row.querySelector('input[type="file"]');
+      return {
+        title: name,
+        duration: '3:00',
+        hasAudio: Boolean(fileInput?.files?.[0])
+      };
+    });
+
+    const form = new FormData();
+    form.append('title', title);
+    form.append('type', 'album');
+    form.append('genre', document.getElementById('a-genre').value || 'Other');
+    form.append('year', document.getElementById('a-year').value || '2026');
+    form.append('emoji', document.getElementById('a-emoji').value || '💿');
+    form.append('description', document.getElementById('a-desc').value);
+    form.append('allow_download', document.getElementById('a-download').checked ? 'true' : 'false');
+    form.append('tracks', JSON.stringify(tracks));
+
+    rows.forEach((row, index) => {
+      const fileInput = row.querySelector('input[type="file"]');
+      if (fileInput?.files?.[0]) {
+        form.append('audio', fileInput.files[0]);
+      }
+    });
+
+    try {
+      await api('/api/music', { method: 'POST', body: form });
+      alert(`Album "${title}" uploaded successfully.`);
+      document.getElementById('a-title').value = '';
+      document.getElementById('a-emoji').value = '';
+      document.getElementById('a-desc').value = '';
+      document.getElementById('track-rows').innerHTML = '';
+      trackCount = 0;
+      addTrackRow();
+      addTrackRow();
+      addTrackRow();
+      await refreshAdmin();
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  async function refreshAdmin() {
+    try {
+      const data = await api('/api/admin/dashboard');
+      adminSingles = data.music?.singles || [];
+      adminAlbums = data.music?.albums || [];
+      adminUsers = data.users || [];
+      adminStats = data.stats || { totalUsers: 0, totalSingles: 0, totalAlbums: 0 };
+      renderAdminLists();
+      renderAdminUsers();
+      renderAdminStats();
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  function renderAdminLists() {
+    document.getElementById('admin-singles').innerHTML = adminSingles.map((single) => `
+      <div class="dashboard-item">
+        <div>
+          <strong>${escapeHtml(single.title)}</strong>
+          <div class="dashboard-meta">${escapeHtml(single.genre)} · ${escapeHtml(single.year)} · ${single.audioPath ? 'Downloadable' : 'No download'}</div>
+        </div>
+        <div class="dashboard-actions">
+          <button class="btn-ghost" type="button" onclick="editAdminItem('single', '${single.id}')">Edit</button>
+          <button class="btn-ghost" type="button" onclick="deleteAdminItem('single', '${single.id}')">Delete</button>
+        </div>
+      </div>
+    `).join('');
+
+    document.getElementById('admin-albums').innerHTML = adminAlbums.map((album) => `
+      <div class="dashboard-item">
+        <div>
+          <strong>${escapeHtml(album.title)}</strong>
+          <div class="dashboard-meta">${escapeHtml(album.genre)} · ${escapeHtml(album.year)} · ${album.tracks.length} tracks</div>
+        </div>
+        <div class="dashboard-actions">
+          <button class="btn-ghost" type="button" onclick="editAdminItem('album', '${album.id}')">Edit</button>
+          <button class="btn-ghost" type="button" onclick="deleteAdminItem('album', '${album.id}')">Delete</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function renderAdminUsers() {
+    document.getElementById('admin-users').innerHTML = adminUsers.map((user) => `
+      <div class="dashboard-item">
+        <div>
+          <strong>${escapeHtml(user.name)}</strong>
+          <div class="dashboard-meta">${escapeHtml(user.email)} · ${escapeHtml(user.role)}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function renderAdminStats() {
+    document.getElementById('admin-total-users').textContent = adminStats.totalUsers;
+    document.getElementById('admin-total-singles').textContent = adminStats.totalSingles;
+    document.getElementById('admin-total-albums').textContent = adminStats.totalAlbums;
+  }
+
+  function editAdminItem(type, id) {
+    const item = type === 'single'
+      ? adminSingles.find((entry) => entry.id === id)
+      : adminAlbums.find((entry) => entry.id === id);
+    if (!item) return;
+
+    document.getElementById('editor-type').value = type;
+    document.getElementById('editor-id').value = item.id;
+    document.getElementById('editor-title-input').value = item.title || '';
+    document.getElementById('editor-genre-input').value = item.genre || '';
+    document.getElementById('editor-year-input').value = item.year || '';
+    document.getElementById('editor-emoji-input').value = item.emoji || '';
+    document.getElementById('editor-desc-input').value = item.desc || '';
+    document.getElementById('editor-download-input').checked = Boolean(item.download);
+    document.getElementById('editor-title').textContent = type === 'single' ? 'Edit Single' : 'Edit Album';
+    document.getElementById('admin-editor').style.display = 'block';
+    document.getElementById('admin-editor').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function closeAdminEditor() {
+    document.getElementById('admin-editor').style.display = 'none';
+  }
+
+  async function saveAdminItem() {
+    const type = document.getElementById('editor-type').value;
+    const id = document.getElementById('editor-id').value;
+    const body = {
+      title: document.getElementById('editor-title-input').value,
+      genre: document.getElementById('editor-genre-input').value,
+      year: document.getElementById('editor-year-input').value,
+      emoji: document.getElementById('editor-emoji-input').value,
+      desc: document.getElementById('editor-desc-input').value,
+      download: document.getElementById('editor-download-input').checked
+    };
+    const path = `/api/music/${id}`;
+
+    try {
+      await api(path, { method: 'PUT', body: JSON.stringify(body) });
+      await refreshAdmin();
+      closeAdminEditor();
+      alert(`${type === 'single' ? 'Single' : 'Album'} updated.`);
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  async function deleteAdminItem(type, id) {
+    if (!confirm('Delete this ' + (type === 'single' ? 'single' : 'album') + '?')) return;
+    const path = `/api/music/${id}`;
+    try {
+      await api(path, { method: 'DELETE' });
+      await refreshAdmin();
+      alert(`${type === 'single' ? 'Single' : 'Album'} deleted.`);
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    await loadAuth();
+    switchTab('single');
+    try {
+      await refreshAdmin();
+    } catch (error) {
+      // ignore until authenticated
+    }
+  });
+</script>
+</body>
+</html>
